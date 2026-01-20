@@ -1,0 +1,21 @@
+.set-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,.2);
+    display: inline-block;
+}
+
+.yaml-toggle {
+    background: transparent;
+    border: 0;
+    text-align: left;
+}
+
+.yaml-toggle:focus {
+    box-shadow: none;
+}
+
+.yaml-arrow {
+    opacity: 0.75;
+}

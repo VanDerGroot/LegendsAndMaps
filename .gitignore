@@ -1,0 +1,54 @@
+# Build outputs
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+# .NET / NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# MSBuild / tooling
+*.rsuser
+*.user
+*.userosscache
+*.suo
+*.cache
+*.log
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+*.swp
+*~
+
+# Rider
+*.sln.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# ASP.NET / config (keep appsettings.json in git)
+**/appsettings.Development.json
+**/appsettings.*.local.json
+
+# Publish output
+publish/
+
+# Test results / coverage
+TestResults/
+coverage/
+coverage.*
+
+# Node (if any tooling is added later)
+node_modules/
+
+# Azure Functions local settings (just in case)
+local.settings.json

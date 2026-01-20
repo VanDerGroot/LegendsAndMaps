@@ -1,0 +1,141 @@
+@implements IAsyncDisposable
+
+<div class="world-map-shell">
+    <div class="world-map-toolbar" role="toolbar" aria-label="Map zoom controls">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
+            <button type="button" class="btn btn-outline-secondary" title="Zoom out" @onclick="ZoomOut">−</button>
+            <button type="button" class="btn btn-outline-secondary" title="Zoom in" @onclick="ZoomIn">+</button>
+            <button type="button" class="btn btn-outline-secondary" title="Reset" @onclick="ResetZoom">Reset</button>
+            <button type="button" class="btn btn-outline-secondary" title="Export PNG" @onclick="ExportPng">Export PNG</button>
+        </div>
+
+        <label class="form-check world-map-legend-toggle" title="Include legend in exported image">
+            <input class="form-check-input" type="checkbox" @bind="_includeLegendInExport" />
+            <span class="form-check-label">Legend</span>
+        </label>
+
+        <span class="world-map-zoom" title="Current zoom">@ZoomPercent%</span>
+    </div>
+
+    <div id="@_containerId" class="world-map-container"></div>
+</div>
+
+@code {
+    [Inject] private IJSRuntime Js { get; set; } = default!;
+
+    [Parameter] public IReadOnlyDictionary<string, string> ColorsByCountryId { get; set; } = new Dictionary<string, string>();
+    [Parameter] public IReadOnlyDictionary<string, string> GroupNameByCountryId { get; set; } = new Dictionary<string, string>();
+    [Parameter] public IReadOnlyCollection<string> HiddenCountryIds { get; set; } = Array.Empty<string>();
+    [Parameter] public IReadOnlyList<MapLegendItem> LegendItems { get; set; } = Array.Empty<MapLegendItem>();
+    [Parameter] public string? MapName { get; set; }
+    [Parameter] public EventCallback<string> CountryClicked { get; set; }
+    [Parameter] public string SvgUrl { get; set; } = "/data/world.svg";
+
+    private readonly string _containerId = $"world-map-{Guid.NewGuid():N}";
+    private DotNetObjectReference<WorldMap>? _dotNetRef;
+    private bool _initialized;
+    private double _zoomScale = 1.0;
+    private bool _includeLegendInExport;
+
+    private int ZoomPercent => (int)Math.Round(_zoomScale * 100, MidpointRounding.AwayFromZero);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await Js.InvokeVoidAsync("worldMap.init", _containerId, _dotNetRef, SvgUrl);
+            _initialized = true;
+        }
+
+        if (_initialized)
+        {
+            await Js.InvokeVoidAsync("worldMap.setColors", _containerId, ColorsByCountryId);
+            await Js.InvokeVoidAsync("worldMap.setGroups", _containerId, GroupNameByCountryId);
+            await Js.InvokeVoidAsync("worldMap.setHidden", _containerId, HiddenCountryIds);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_initialized)
+        {
+            await Js.InvokeVoidAsync("worldMap.setColors", _containerId, ColorsByCountryId);
+            await Js.InvokeVoidAsync("worldMap.setGroups", _containerId, GroupNameByCountryId);
+            await Js.InvokeVoidAsync("worldMap.setHidden", _containerId, HiddenCountryIds);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnCountryClicked(string countryId)
+    {
+        if (CountryClicked.HasDelegate)
+        {
+            await CountryClicked.InvokeAsync(countryId);
+        }
+    }
+
+    [JSInvokable]
+    public Task OnZoomChanged(double scale)
+    {
+        _zoomScale = scale <= 0 ? 1.0 : scale;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ZoomIn()
+    {
+        if (!_initialized) return;
+        await Js.InvokeVoidAsync("worldMap.zoomIn", _containerId);
+        _zoomScale = await Js.InvokeAsync<double>("worldMap.getZoom", _containerId);
+    }
+
+    private async Task ZoomOut()
+    {
+        if (!_initialized) return;
+        await Js.InvokeVoidAsync("worldMap.zoomOut", _containerId);
+        _zoomScale = await Js.InvokeAsync<double>("worldMap.getZoom", _containerId);
+    }
+
+    private async Task ResetZoom()
+    {
+        if (!_initialized) return;
+        await Js.InvokeVoidAsync("worldMap.resetZoom", _containerId);
+        _zoomScale = 1.0;
+    }
+
+    private async Task ExportPng()
+    {
+        if (!_initialized) return;
+
+        var timestamp = DateTimeOffset.Now.ToString("yyyy-MM-dd_HHmmss");
+        var mapName = string.IsNullOrWhiteSpace(MapName) ? "World Map" : MapName!.Trim();
+        var defaultName = $"{mapName}_{timestamp}";
+
+        var options = new
+        {
+            defaultName,
+            legendTitle = mapName,
+            includeLegend = _includeLegendInExport,
+            legendItems = (LegendItems ?? Array.Empty<MapLegendItem>())
+                .Where(x => !string.IsNullOrWhiteSpace(x.Name))
+                .Select(x => new { name = x.Name, color = x.Color })
+                .ToArray()
+        };
+
+        await Js.InvokeVoidAsync("worldMap.exportPng", _containerId, options);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("worldMap.dispose", _containerId);
+        }
+        catch
+        {
+            // ignore (tearing down)
+        }
+
+        _dotNetRef?.Dispose();
+    }
+}
