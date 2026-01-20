@@ -29,7 +29,7 @@
     [Parameter] public IReadOnlyList<MapLegendItem> LegendItems { get; set; } = Array.Empty<MapLegendItem>();
     [Parameter] public string? MapName { get; set; }
     [Parameter] public EventCallback<string> CountryClicked { get; set; }
-    [Parameter] public string SvgUrl { get; set; } = "/data/world.svg";
+    [Parameter] public string SvgUrl { get; set; } = "data/world.svg";
 
     private readonly string _containerId = $"world-map-{Guid.NewGuid():N}";
     private DotNetObjectReference<WorldMap>? _dotNetRef;
