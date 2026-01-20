@@ -536,7 +536,7 @@
         const container = document.getElementById(containerId);
         if (!container) throw new Error(`worldMap.init: container not found: ${containerId}`);
 
-        const url = svgUrl || '/data/world.svg';
+        const url = new URL(svgUrl || 'data/world.svg', document.baseURI).toString();
         const res = await fetch(url);
         if (!res.ok) throw new Error(`worldMap.init: failed to fetch SVG: ${res.status}`);
 
